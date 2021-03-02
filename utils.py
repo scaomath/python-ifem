@@ -20,13 +20,13 @@ from time import time
 import matplotlib.pyplot as plt
 from datetime import date
 import math
+
+
 import numpy as np
 import pandas as pd
 import psutil
 import torch
 import pickle
-import seaborn as sns
-sns.set()
 from sklearn.metrics import roc_auc_score
 
 
@@ -57,7 +57,7 @@ if is_interactive():
         print("Package not found.")
 
 #########################################################################
-
+PI = math.pi
 SEED = 1127 
 
 def get_size(bytes, suffix='B'):

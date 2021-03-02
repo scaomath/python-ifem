@@ -1,5 +1,5 @@
 # πfem
-πfem (Pi-FEM or Python-iFEM) is a compact Python finite element library based on the popular MATLAB package [iFEM](https://github.com/lyc102/ifem). The main core of this package is ported from iFEM, and is largely readable extremely suitable for pedagogical purposes. The procedure is sequential in nature, instead of embracing the modern obj-oriented modular style.
+πfem (Pi-FEM or Python-iFEM) is a compact Python finite element library modified based on the popular MATLAB package [iFEM](https://github.com/lyc102/ifem) by Dr. Long Chen. The main core of this package is ported from iFEM, and is largely readable extremely suitable for pedagogical purposes. The procedure is sequential in nature like C, instead of embracing the modern object-oriented modular Pythonic style.
 
 
 # Repo structure

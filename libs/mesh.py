@@ -122,11 +122,14 @@ class TriMesh2D:
     '''
     Set up auxiliary data structures for Dirichlet boundary condition
 
+    To-do:
+        - Add Neumann boundary.
+
     Combined the following routine from Long Chen's iFEM 
-        - setboundary:
-        - delmesh: 
-        - auxstructure:
-        - gradbasis:
+        - setboundary: get a boundary bool matrix according to elem
+        - delmesh: delete mesh by eval()
+        - auxstructure: edge-based auxiliary data structure
+        - gradbasis: compute the gradient of local barycentric coords
 
     Input:
         - node: (N, 2)
@@ -140,6 +143,11 @@ class TriMesh2D:
           edge2elem[e,-2:] are the local indices of e to edge2elem[e,:2]
         - neighbor: (NT, 3) the local to global indices map of neighbor of elements
           neighbor[t,i] is the global index of the element opposite to the i-th vertex of the t-th element. 
+    
+    Notes: 
+        1. Python assigns the first appeared entry's index in unique; Matlab assigns the last appeared entry's index in unique.
+        2. Matlab uses columns as natural indexing, reshape(NT, 3) in Matlab should be changed to
+        reshape(3, -1).T in Python if initially the data is concatenated along axis=0 using np.r_[].
 
     '''
 
@@ -151,7 +159,12 @@ class TriMesh2D:
         node, elem = self.node, self.elem
         numElem = len(elem)
         numNode = len(node)
+
+        # every edge's sign
         allEdge = np.r_[elem[:,[1,2]], elem[:,[2,0]], elem[:,[0,1]]]
+        elem2edgeSign = np.ones(3*numElem, dtype=int)
+        elem2edgeSign[allEdge[:,0] > allEdge[:, 1]] = -1
+        self.elem2edgeSign = elem2edgeSign.reshape(3,-1).T
         allEdge = np.sort(allEdge, axis=1)
 
         # edge structures

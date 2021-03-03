@@ -122,8 +122,25 @@ class TriMesh2D:
     '''
     Set up auxiliary data structures for Dirichlet boundary condition
 
-    Combined setboundary, auxstructure, gradbasis
-    from Long Chen's iFEM
+    Combined the following routine from Long Chen's iFEM 
+        - setboundary:
+        - delmesh: 
+        - auxstructure:
+        - gradbasis:
+
+    Input:
+        - node: (N, 2)
+        - elem: (NT, 3)
+    
+    Outputs:
+        - edge: (NE, 2) global indexing of edges
+        - elem2edge: (NT, 3) local to global indexing
+        - edge2edge: (NE, 4)
+          edge2elem[e,:2] are the global indexes of two elements sharing the e-th edge
+          edge2elem[e,-2:] are the local indices of e to edge2elem[e,:2]
+        - neighbor: (NT, 3) the local to global indices map of neighbor of elements
+          neighbor[t,i] is the global index of the element opposite to the i-th vertex of the t-th element. 
+
     '''
 
     def __init__(self, node=None, elem=None) -> None:
@@ -131,12 +148,13 @@ class TriMesh2D:
         self.node = node
     
     def update_auxstructure(self):
-        node = self.node
-        elem = self.elem
-        N = len(node)
+        node, elem = self.node, self.elem
+        numElem = len(elem)
+        numNode = len(node)
         allEdge = np.r_[elem[:,[1,2]], elem[:,[2,0]], elem[:,[0,1]]]
-
         allEdge = np.sort(allEdge, axis=1)
+
+        # edge structures
         self.edge, E2e, e2E, counts = np.unique(allEdge, 
                                 return_index=True, 
                                 return_inverse=True, 
@@ -146,8 +164,73 @@ class TriMesh2D:
         isBdEdge = (counts==1)
         self.bdFlag = isBdEdge[e2E].reshape(3,-1).T
         Dirichlet = self.edge[isBdEdge]
-        self.isBdNode = np.zeros(N, dtype=bool) 
+        self.isBdNode = np.zeros(numNode, dtype=bool) 
         self.isBdNode[Dirichlet.ravel()] = True
+
+        # neighbor structures
+        E2e_reverse = np.zeros_like(E2e)
+        E2e_reverse[e2E] = np.arange(3*numElem)
+
+        k1 = E2e//numElem
+        k2 = E2e_reverse//numElem
+        t1 = E2e - numElem*k1
+        t2 = E2e_reverse - numElem*k2
+        ix = (counts == 2) # interior edge indicator
+
+        self.neighbor = np.zeros((numElem, 3), dtype=int)
+        ixElemLocalEdge1 = np.c_[t1[ix], k1[ix]]
+        ixElemLocalEdge2 = np.c_[t2, k2]
+        ixElemLocalEdge = np.r_[ixElemLocalEdge1, ixElemLocalEdge2]
+        ixElem = np.r_[t2[ix],t1]
+        for i in range(3):
+            ix = (ixElemLocalEdge[:,1]==i) # i-th edge's neighbor
+            self.neighbor[:,i] = np.bincount(ixElemLocalEdge[ix, 0], 
+                                             weights=ixElem[ix], minlength=numElem)
+        
+        # edge to elem
+        self.edge2elem = np.c_[t1, t2, k1, k2]
+
+    def delete_mesh(self, expr=None):
+        '''
+        Update the mesh by deleting the eval(expr)
+        '''
+        assert expr is not None
+        node, elem = self.node, self.elem
+        center = node[elem].mean(axis=1)
+        x, y = center[:,0], center[:,1]
+        
+        # delete element
+        idx = eval(expr)
+        mask = np.ones(len(elem), dtype=bool)
+        mask[idx] = False
+        elem = elem[mask]
+
+        # re-mapping the indices of vertices
+        # to remove the unused ones
+        isValidNode = np.zeros(len(node), dtype=bool)
+        indexMap = np.zeros(len(node), dtype=int)
+
+        isValidNode[elem.ravel()] = True
+        self.node = node[isValidNode]
+    
+        indexMap[isValidNode] = np.arange(len(self.node))
+        self.elem = indexMap[elem]
+
+    def update_gradbasis(self):
+        node, elem = self.node, self.elem
+
+        ve1 = node[elem[:,2]]-node[elem[:,1]]
+        ve2 = node[elem[:,0]]-node[elem[:,2]]
+        ve3 = node[elem[:,1]]-node[elem[:,0]]
+        area = 0.5*(-ve3[:,0]*ve2[:,1] + ve3[:,1]*ve2[:,0])
+        Dlambda = np.zeros((len(elem), 2, 3)) #(# elem, 2-dim vector, 3 vertices)
+
+        Dlambda[...,2] = np.c_[-ve3[:,1]/(2*area), ve3[:,0]/(2*area)]
+        Dlambda[...,0] = np.c_[-ve1[:,1]/(2*area), ve1[:,0]/(2*area)]
+        Dlambda[...,1] = np.c_[-ve2[:,1]/(2*area), ve2[:,0]/(2*area)]
+
+        self.area = area
+        self.Dlambda = Dlambda
 
     def get_elem2edge(self):
         return self.elem2edge
@@ -158,19 +241,8 @@ class TriMesh2D:
     def get_edge(self):
         return self.edge
 
-    def compute_gradbasis(self):
-        node = self.node
-        elem = self.elem
-        ve1 = node[elem[:,2]]-node[elem[:,1]]
-        ve2 = node[elem[:,0]]-node[elem[:,2]]
-        ve3 = node[elem[:,1]]-node[elem[:,0]]
-        area = 0.5*(-ve3[:,0]*ve2[:,1] + ve3[:,1]*ve2[:,0])
-        nT = len(elem)
-        Dlambda = np.zeros((nT, 2, 3)) #(# elem, 2-dim vector, 3 vertices)
-
-        Dlambda[...,2] = np.c_[-ve3[:,1]/(2*area), ve3[:,0]/(2*area)]
-        Dlambda[...,0] = np.c_[-ve1[:,1]/(2*area), ve1[:,0]/(2*area)]
-        Dlambda[...,1] = np.c_[-ve2[:,1]/(2*area), ve2[:,0]/(2*area)]
-
-        self.area = area
-        self.Dlambda = Dlambda
+    def get_gradbasis(self):
+        try:
+            return self.Dlambda
+        except NameError:
+            print("Run meshObj.update_gradbasis() first.")

@@ -1,6 +1,9 @@
 #%% imports
 import numpy as np
-from libs.mesh import *
+try:
+    from libs.mesh import *
+except:
+    from .mesh import *
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 

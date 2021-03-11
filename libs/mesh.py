@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.sparse import csr_matrix
+import matplotlib.pyplot as plt
+import matplotlib.tri as tri
 
 def rectangleMesh(x_range=(0,1), y_range=(0,1), h=0.25):
     """ 
@@ -35,26 +37,10 @@ def rectangleMesh(x_range=(0,1), y_range=(0,1), h=0.25):
     elem = np.asarray(elem, dtype=np.int32)
     return node, elem
 
-
-
-def sparse_matlab(i, j, v, m, n):
-    """
-    Create and compressing a matrix that have many zeros
-    Parameters:
-        i: 1-D array representing the index 1 values 
-            Size n1
-        j: 1-D array representing the index 2 values 
-            Size n1
-        v: 1-D array representing the values 
-            Size n1
-        m: integer representing x size of the matrix >= n1
-        n: integer representing y size of the matrix >= n1
-    Returns:
-        s: 2-D array
-            Matrix full of zeros excepting values v at indexes i, j
-    """
-    return csr_matrix((v, (i, j)), shape=(m, n))
-
+def showmesh(node,elem):
+    triangulation = tri.Triangulation(node[:,0], node[:,1], elem)
+    h = plt.triplot(triangulation, 'b-h', linewidth=1, alpha=0.5)
+    return h
 
 
 def setboundary(elem):

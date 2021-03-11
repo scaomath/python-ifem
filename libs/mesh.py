@@ -3,6 +3,13 @@ from scipy.sparse import csr_matrix
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 
+try:
+    import plotly.figure_factory as ff
+    import plotly.io as pio
+    import plotly.graph_objects as go
+except ImportError as e:
+    print('Please install Plotly for showing mesh and solutions.')
+
 def rectangleMesh(x_range=(0,1), y_range=(0,1), h=0.25):
     """ 
     Input: 
@@ -37,10 +44,50 @@ def rectangleMesh(x_range=(0,1), y_range=(0,1), h=0.25):
     elem = np.asarray(elem, dtype=np.int32)
     return node, elem
 
-def showmesh(node,elem):
+def showmesh(node,elem, **kwargs):
     triangulation = tri.Triangulation(node[:,0], node[:,1], elem)
-    h = plt.triplot(triangulation, 'b-h', linewidth=1, alpha=0.5)
+    markersize = 3000/len(node)
+    if kwargs.items():
+        h = plt.triplot(triangulation, 'b-h', **kwargs)
+    else:
+        h = plt.triplot(triangulation, 'b-h', linewidth=0.5, alpha=0.5, markersize=markersize)
     return h
+
+def showsolution(node,elem,u,**kwargs):
+    '''
+    show 2D solution either of a scalar function or a vector field
+    '''
+    markersize = 300/len(node)
+    u /= (np.abs(u)).max()
+    if u.ndim == 1:
+        us = ff.create_trisurf(x=node[:,0], y=node[:,1], z=u,
+                            simplices=elem,
+                            colormap="Viridis", # similar to matlab's default colormap
+                            showbackground=False,
+                            aspectratio=dict(x=1, y=1, z=1),
+                            **kwargs)
+        fig = go.Figure(data=us)
+        fig.update_layout(template='plotly_dark')
+        fig.show()
+    elif u.ndim == 2 and u.shape[-1] == 2:
+        center = node[elem].mean(axis=1)
+        uvec = ff.create_quiver(x=center[:,0], y=center[:,1], 
+                            u=u[:,0], v=u[:,1],
+                            scale=.2,
+                            arrow_scale=.1,
+                            name='quiver',
+                            line_width=1.5,
+                            **kwargs)
+
+        uvec.add_trace(go.Scatter(x=node[:,0], y=node[:,1],
+                            mode='markers',
+                            marker_size=markersize,
+                            name='vertices'))
+
+        fig = go.Figure(data=uvec)
+        fig.update_layout(template='plotly_dark',
+                        margin=dict(l=20, r=20, t=20, b=20),)
+        fig.show()
 
 
 def setboundary(elem):

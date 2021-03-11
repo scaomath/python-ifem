@@ -27,7 +27,6 @@ import pandas as pd
 import psutil
 import torch
 import pickle
-from sklearn.metrics import roc_auc_score
 
 
 ##########################################################################
@@ -220,13 +219,13 @@ def get_date():
     today = date.today()
     return today.strftime("%b-%d-%Y")
 
-def roc_auc_compute_fn(y_targets, y_preds):
-    '''
-    roc_auc func for torch tensors
-    '''
-    y_true = y_targets.cpu().numpy()
-    y_pred = y_preds.cpu().numpy()
-    return roc_auc_score(y_true, y_pred)
+# def roc_auc_compute_fn(y_targets, y_preds):
+#     '''
+#     roc_auc func for torch tensors
+#     '''
+#     y_true = y_targets.cpu().numpy()
+#     y_pred = y_preds.cpu().numpy()
+#     return roc_auc_score(y_true, y_pred)
 
 def argmax(lst):
   return lst.index(max(lst))

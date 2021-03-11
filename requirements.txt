@@ -1,0 +1,10 @@
+matplotlib==3.3.4
+numpy==1.19.2
+seaborn==0.11.1
+pandas==1.2.3
+torch==1.8.0
+scipy==1.6.1
+psutil==5.8.0
+jupyterthemes==0.20.0
+plotly==4.14.3
+ipython==7.21.0

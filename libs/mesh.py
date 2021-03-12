@@ -7,6 +7,7 @@ try:
     import plotly.figure_factory as ff
     import plotly.io as pio
     import plotly.graph_objects as go
+
 except ImportError as e:
     print('Please install Plotly for showing mesh and solutions.')
 
@@ -57,37 +58,47 @@ def showsolution(node,elem,u,**kwargs):
     '''
     show 2D solution either of a scalar function or a vector field
     '''
-    markersize = 300/len(node)
-    u /= (np.abs(u)).max()
+    markersize = 3000/len(node)
+    
     if u.ndim == 1:
-        us = ff.create_trisurf(x=node[:,0], y=node[:,1], z=u,
+        uplot = ff.create_trisurf(x=node[:,0], y=node[:,1], z=u,
                             simplices=elem,
                             colormap="Viridis", # similar to matlab's default colormap
                             showbackground=False,
                             aspectratio=dict(x=1, y=1, z=1),
-                            **kwargs)
-        fig = go.Figure(data=us)
-        fig.update_layout(template='plotly_dark')
-        fig.show()
+                            )
+        fig = go.Figure(data=uplot)
+
     elif u.ndim == 2 and u.shape[-1] == 2:
+        assert u.shape[0] == elem.shape[0]
+        u /= (np.abs(u)).max()
         center = node[elem].mean(axis=1)
-        uvec = ff.create_quiver(x=center[:,0], y=center[:,1], 
+        uplot = ff.create_quiver(x=center[:,0], y=center[:,1], 
                             u=u[:,0], v=u[:,1],
-                            scale=.2,
-                            arrow_scale=.1,
-                            name='quiver',
-                            line_width=1.5,
-                            **kwargs)
+                            scale=.05,
+                            arrow_scale=.5,
+                            name='gradient of u',
+                            line_width=1,
+                            )
 
-        uvec.add_trace(go.Scatter(x=node[:,0], y=node[:,1],
-                            mode='markers',
-                            marker_size=markersize,
-                            name='vertices'))
+        # uplot.add_trace(go.Scatter(x=center[:,0], y=center[:,1],
+        #                           mode='markers',
+        #                     marker=dict(
+        #                             color='LightSkyBlue',
+        #                             size=markersize,
+        #                             # line=dict(
+        #                             #     color='MediumPurple',
+        #                             #     width=12
+        #                             # )
+        #                         ),
+        #                     name='nodes in mesh'))
 
-        fig = go.Figure(data=uvec)
-        fig.update_layout(template='plotly_dark',
-                        margin=dict(l=20, r=20, t=20, b=20),)
-        fig.show()
+    fig = go.Figure(data=uplot)
+    
+    fig.update_layout(template='plotly_dark',
+                    margin=dict(l=5, r=5, t=5, b=5),
+                    **kwargs)
+    fig.show()
 
 
 def setboundary(elem):
@@ -177,6 +188,18 @@ class TriMesh2D:
         - neighbor: (NT, 3) the local to global indices map of neighbor of elements
           neighbor[t,i] is the global index of the element opposite to the i-th vertex of the t-th element. 
     
+    Example: the following routine gets all ifem similar data structures
+        node, elem = rectangleMesh(x_range=(0,1), y_range=(0,1), h=1/16)
+        T = TriMesh2D(node,elem)
+        T.delete_mesh('(x>0) & (y<0)')
+        T.update_auxstructure()
+        T.update_gradbasis()
+        node, elem = T.node, T.elem
+        Dphi = T.Dlambda
+        area = T.area
+        elem2edgeSign = T.elem2edgeSign
+        edge2elem = T.edge2elem
+
     Notes: 
         1. Python assigns the first appeared entry's index in unique; Matlab assigns the last appeared entry's index in unique.
         2. Matlab uses columns as natural indexing, reshape(NT, 3) in Matlab should be changed to
